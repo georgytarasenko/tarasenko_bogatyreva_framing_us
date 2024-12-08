@@ -234,10 +234,29 @@ model1 <- brm(
   warmup = 1000, 
   iter   = 4000, 
   chains = 3, 
-  cores  = 6
-  #file = here("Output", "Models", "model1")
+  cores  = 6,
+  file = here("Output", "Models", "model1")
   #control = list(adapt_delta = 0.95)
 )
 
 pp_check(model1, type = "bars")
 summary(model1)
+
+model2 <- tap %>% 
+   mutate(fr = as.factor(fr),
+          att_t_ex = as.numeric(as.character(att_t_ex))) %>% 
+    brm(att_t_ex ~ 1 + min_maj_scale_1*fr + min_maj_scale_sq*fr + (1 | state),
+  family = cumulative(link = "probit"),
+  data = .,
+  seed = 1234,
+  warmup = 1000, 
+  iter   = 4000, 
+  chains = 3, 
+  cores  = 6,
+  file = here("Output", "Models", "model2")
+)
+
+pp_check(model2, type = "bars")
+summary(model2)
+
+
