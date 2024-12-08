@@ -17,8 +17,8 @@ tap <- tap %>%
       TRUE ~ NA_character_
     ),
     treatment1 = case_when(
-      q86_text %in% unique(q86_text)[1:2] ~ "Neutral",
-      q86_text == unique(q86_text)[3] ~ "Non-Neutral",
+      q86_text %in% unique(q86_text)[1:2] ~ "Non-Neutral", #Гош тут у тебя было Neutral, хотя мне кажется ты хотел Non-Neutral
+      q86_text == unique(q86_text)[3] ~ "Neutral", #А тут Neutral
       TRUE ~ NA_character_
     )
   )
@@ -94,11 +94,11 @@ pres20_agg <- pres20_agg %>%
 
 #split states by quartiles of n anti-tans laws
 pres20_agg <- pres20_agg %>% 
-  mutate(anti_t_laws_q = as.numeric(findInterval(anti_t_laws, unique(quantile(anti_t_laws, seq(0, 1, 0.26)),
+  mutate(anti_t_laws_q = as.numeric(findInterval(anti_t_laws, unique(quantile(anti_t_laws, seq(0, 1, 0.26)), #Тут не 0,25 должно быть?
                                     rightmost.closed = TRUE))-1))
 
 pres20_agg <- pres20_agg %>% 
-  mutate(share_diff_q = as.numeric(findInterval(share_diff, unique(quantile(share_diff, seq(0, 1, 0.26)),
+  mutate(share_diff_q = as.numeric(findInterval(share_diff, unique(quantile(share_diff, seq(0, 1, 0.26)), #И тут
                                     rightmost.closed = TRUE))-1))
 
 # Merge with tap and add calculated variables
@@ -224,5 +224,20 @@ fit1 <- brm(
   #control = list(adapt_delta = 0.95)
 )
 
+library(brms)
+library(here)
+model1 <- brm(
+  as.numeric(att_t_ex) ~ 1 + min_maj_scale*as.factor(fr) + (1 | state),
+  family = cumulative(link = "probit"),
+  data = tap,
+  seed = 1234,
+  warmup = 1000, 
+  iter   = 4000, 
+  chains = 3, 
+  cores  = 6
+  #file = here("Output", "Models", "model1")
+  #control = list(adapt_delta = 0.95)
+)
 
-
+pp_check(model1, type = "bars")
+summary(model1)
