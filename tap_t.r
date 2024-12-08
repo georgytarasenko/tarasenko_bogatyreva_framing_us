@@ -163,11 +163,12 @@ tap <- tap %>%
 ##### WHOLE SAMPLE
 
 ggplot(subset(tap), aes(x = as.numeric(min_maj_scale), y = as.numeric(att_t_ex), color = as.factor(fr)))+
-    geom_point()+
+    geom_jitter(alpha = 0.3, size = 1, width = 0.3, height = 0.5)+
+    xlim(0,1)+
     theme_minimal()+
     geom_smooth(method = 'lm', formula = y ~ x + I(x^2)) + 
 xlab('Majority-Minority Scale') + ylab('Extremity of Attitude Towards Transgender Peopel')+
-labs(colour="Treated")
+labs(colour="Treated") 
 
 ##### BY PARTISANSHIP
 
@@ -242,6 +243,13 @@ model1 <- brm(
 pp_check(model1, type = "bars")
 summary(model1)
 
+priors <- c(
+  # For main effects and interactions (standardized predictors)
+  prior(normal(0, 2), class = "b"),
+  # For the standard deviation of random effects
+  prior(exponential(1), class = "sd")
+)
+
 model2 <- tap %>% 
    mutate(fr = as.factor(fr),
           att_t_ex = as.numeric(as.character(att_t_ex))) %>% 
@@ -253,6 +261,7 @@ model2 <- tap %>%
   iter   = 4000, 
   chains = 3, 
   cores  = 6,
+  prior = priors,
   file = here("Output", "Models", "model2")
 )
 
