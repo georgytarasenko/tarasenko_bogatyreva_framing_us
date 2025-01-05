@@ -5,7 +5,7 @@ library(ggstatsplot)
 library(tidyverse)
 
 # Load data
-tap <- readRDS("2024-110_client.rds")
+tap <- readRDS("/Users/georgetarasenko/Dropbox/us_framing_project/rep_test/2024-110_client.rds")
 
 # Assign treatment groups
 tap <- tap %>%
@@ -38,7 +38,7 @@ tap <- tap %>%
   )
 
 # Load and process presidential election data
-pres20 <- read.csv('president_county_candidate.csv')
+pres20 <- read.csv('/Users/georgetarasenko/Dropbox/us_framing_project/rep_test/president_county_candidate.csv')
 
 pres20_agg <- pres20 %>%
   group_by(state, candidate) %>%
@@ -162,25 +162,37 @@ tap <- tap %>%
 ### VISUAL INSPECTION
 ##### WHOLE SAMPLE
 
+names(tap)
+
 ggplot(subset(tap), aes(x = as.numeric(min_maj_scale), y = as.numeric(att_t_ex), color = as.factor(fr)))+
-    geom_jitter(alpha = 0.3, size = 1, width = 0.3, height = 0.5)+
+    geom_jitter(alpha = 0.5, size = 1, 
+      width = 0.25, 
+      height = 0.5)+
     xlim(0,1)+
     theme_minimal()+
     geom_smooth(method = 'lm', formula = y ~ x + I(x^2)) + 
-xlab('Majority-Minority Scale') + ylab('Extremity of Attitude Towards Transgender Peopel')+
-labs(colour="Treated") 
-
+xlab('Respondents Ideological Congruence With The State Aggregate (High-Low)') + ylab('Extremity of Attitude Towards Transgender Legislation')+
+labs(colour="Framed") +
+scale_color_manual(values = c("grey20", "darkviolet"),
+                    labels = c("NO", "YES")) +
+theme_bw()+
+  theme(
+    legend.position = "top",                  # Move legend to the top
+    legend.direction = "horizontal",          # Align legend items horizontally
+    legend.title = element_text(angle = 0, hjust = 0.5), # Center legend title above
+    legend.text = element_text(size = 10),    # Adjust size of legend text
+  )
 ##### BY PARTISANSHIP
 
 ggplot(subset(tap), aes(x = min_maj_scale, y = as.numeric(att_t_ex), color = as.factor(fr))) +
-    geom_point() +
+    geom_jitter(alpha = 0.3, size = 1, width = 0.3, height = 0.5)+
     geom_smooth(method = 'lm', formula = y ~ x + I(x^2), se = F) + facet_wrap(~rep_dem)+ 
 xlab('Majority-Minority Scale') + ylab('Extremity of Attitude Towards Transgender Peopel')+
 labs(colour="Treated")
 
 #No Independent
 ggplot(subset(tap, as.numeric(rep_dem) !='Ind'), aes(x = min_maj_scale, y = as.numeric(att_t_ex), color = as.factor(fr)))+
-    geom_point() +
+    geom_jitter(alpha = 0.3, size = 1, width = 0.3, height = 0.5)+
     geom_smooth(method = 'lm', formula = y ~ x + I(x^2),) 
 
 
@@ -266,6 +278,124 @@ model2 <- tap %>%
 )
 
 pp_check(model2, type = "bars")
+
+
+
 summary(model2)
 
 
+model1 <- readRDS("/Users/georgetarasenko/Dropbox/us_framing_project/rep_test/Output/Models/model1.rds")
+
+model2 <- readRDS("/Users/georgetarasenko/Dropbox/us_framing_project/rep_test/Output/Models/model2.rds")
+
+library(brms)
+
+library(marginaleffects)
+library(insight)
+library(ggdist)
+
+
+
+
+
+conditions <- data.frame(min_maj_scale_1 = c(1, 1.25, 1.5, 1.75, 2), min_maj_scale_sq = c(1, 1.5625, 1.75, 3.0625, 4))
+
+plot(conditional_effects(model2, 
+                          effects = "fr", conditions = conditions), ncol = 5)
+
+avg_comparisons(model2)
+stop()
+
+
+table(tap$min_maj_scale_1)
+
+
+
+
+grid <- data.frame(fr = 1, min_maj_scale_1 = 1, min_maj_scale_sq = 1, state = "NY")
+
+
+
+pred <- predictions(model = model2,
+                    newdata = datagrid(fr = c(0,1), 
+                    min_maj_scale_1 = c(1, 1.5, 2), 
+                    min_maj_scale_sq = c(1, 2.25, 4)), type = 'link')
+pred <- get_draws(pred)
+pred$d <- ifelse(pred$min_maj_scale_sq == pred$min_maj_scale_1^2, 1, 0)
+
+df <- datagrid(fr = c(0,1), 
+                    min_maj_scale_1 = c(1, 1.5, 2), 
+                    min_maj_scale_sq = c(1, 2.25, 4))
+
+
+preds <- predictions(model = model2,
+                    newdata = tap, type = 'link')
+
+aggregated <- preds %>%
+  group_by(fr, min_maj_scale_1) %>%
+  summarise(
+    estimate = mean(estimate, na.rm = TRUE),
+    conf.low = mean(conf.low, na.rm = TRUE),
+    conf.high = mean(conf.high, na.rm = TRUE)
+  )
+
+
+
+differences <- aggregated %>%
+  group_by(min_maj_scale_1) %>%
+  summarise(
+    estimate = mean(estimate[fr == 1]- estimate[fr == 0], na.rm = T),
+    conf.low = mean(conf.low[fr == 1] - conf.low[fr == 0], na.rm = T),
+    conf.high = mean(conf.high[fr == 1] - conf.high[fr == 0], na.rm = T))
+
+  
+ggplot(differences, aes(x = min_maj_scale_1, y =  estimate, ymin=conf.low, ymax=conf.high)) +
+    geom_line() + 
+    geom_ribbon(alpha=0.5) +
+    geom_hline(yintercept = 0, linetype = 'dashed', color ='darkgrey')+
+    xlab('Respondents Ideological Congruence With The State (High-Low)')+
+    ylab('Framing Effect')
+     
+
+
+
+
+nd1 <- datagrid(model = model2,
+              fr = 1, min_maj_scale_1 = 1, min_maj_scale_sq = 1)
+
+
+nd2 <- datagrid(model = model2,
+              fr = 1, min_maj_scale_1 = 1.5, min_maj_scale_sq = 1.75)
+
+
+nd3 <- datagrid(model = model2,
+              fr = 1, min_maj_scale_1 = 2, min_maj_scale_sq = 4)
+
+p1 <- predictions(model2, type = "link", newdata = nd1) |>
+    get_draws() |>
+    transform(type = "Type1")
+
+p2 <- predictions(model2, type = "link", newdata = nd2) |>
+    get_draws() |>
+    transform(type = "Type2")
+
+p3 <- predictions(model2, type = "link", newdata = nd3) |>
+    get_draws() |>
+    transform(type = "Type3")
+
+pred <- rbind(p1,p2,p3)
+
+
+ggplot(pred, aes(x = draw, fill = fr)) +
+    stat_halfeye(alpha = .5)+
+    facet_wrap(~ type) 
+
+
+# Counterfactual predictions
+g_1_p <- predict(model2, newdata = g_1, type = "response")
+g_0_p <- predict(model2, newdata = g_0, type = "response")
+
+comparisons(model2, variables = "fr", newdata = grid)
+
+# Counterfactual comparison
+g_1_p - g_0_p
