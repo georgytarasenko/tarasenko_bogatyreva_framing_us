@@ -3,6 +3,8 @@ library(srvyr)
 library(afex)
 library(ggstatsplot)
 library(tidyverse)
+library(brms)
+library(here)
 
 # Load data
 tap <- readRDS("2024-110_client.rds")
@@ -250,6 +252,7 @@ priors <- c(
   prior(exponential(1), class = "sd")
 )
 
+#Сделать эту модель на сабсетах респ. и демокр.
 model2 <- tap %>% 
    mutate(fr = as.factor(fr),
           att_t_ex = as.numeric(as.character(att_t_ex))) %>% 
@@ -264,6 +267,22 @@ model2 <- tap %>%
   prior = priors,
   file = here("Output", "Models", "model2")
 )
+
+model3 <- tap %>% 
+  mutate(fr = as.factor(fr),
+         att_t_ex = as.numeric(as.character(att_t_ex))) %>% 
+  brm(att_t_ex ~ 1 + min_maj_scale_1*fr + min_maj_scale_sq*fr + (1 | state) + (1 + fr| anti_t_laws_q),
+      family = cumulative(link = "probit"),
+      data = .,
+      seed = 1234,
+      warmup = 1000, 
+      iter   = 4000, 
+      chains = 3, 
+      cores  = 6,
+      prior = priors,
+      file = here("Output", "Models", "model3")
+  )
+
 
 pp_check(model2, type = "bars")
 summary(model2)
