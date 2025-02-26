@@ -8,6 +8,8 @@ output: html_document
 library(tidyverse)
 library(here)
 library(brms)
+library(kableExtra)
+library(xtable)
 ```
 
 ```{r}
@@ -23,8 +25,8 @@ table_model_w_controls_fx <- tibble::rownames_to_column(table_model_w_controls_f
 table_model_w_controls_fx <- table_model_w_controls_fx %>% 
   mutate(name = case_match(
     name,
-    "Intercept[1]" ~ "Threshold Attitude extremity: 1-2",
-    "Intercept[2]" ~ "Threshold Attitude extremity: 2-3",
+    "Intercept[1]" ~ "Threshold of attitude extremity: 1-2",
+    "Intercept[2]" ~ "Threshold of attitude extremity: 2-3",
     "min_maj_scale_1" ~ "Majority-Minority Scale", 
     "min_maj_scale_sq" ~ "Majority-Minority Scale^2",
     "fr1" ~ "Framing: Yes",
@@ -44,27 +46,49 @@ table_model_w_controls_fx <- table_model_w_controls_fx %>%
             Tail_ESS = round(Tail_ESS))
 ```
 ```{r}
-table_model_w_controls_fx %>% 
-  knitr::kable(.)
+latex_code_table1 <- xtable(table_model_w_controls_fx)
+latex_code_table1 <- capture.output(print(latex_code_table1, booktabs = TRUE))
+writeLines(latex_code_table1, here("Output", "Tables", "table_for_overleaf.tex"))
 ```
 #### Random effects
 ```{r}
 table_model_w_controls_rf <- as.data.frame(table_model_w_controls$random)
 
-table_model_w_controls_rf <- tibble::rownames_to_column(table_model_w_controls_rf, "name")
+table_model_w_controls_rf_Q <- table_model_w_controls_rf %>% 
+  select(., starts_with("anti_t_laws_q")) %>% 
+  tibble::rownames_to_column(., "name")
 
-colnames(table_model_w_controls_rf) <- c("name", "cntry.Estimate", "cntry.Est.Error", "cntry.lCI",  "cntry.uCI", "cntry.Rhat", "cntry.Bulk_ESS", "cntry.Tail_ESS")
+colnames(table_model_w_controls_rf_Q) <- c("name", "Estimate", "Est.Error", "lCI",  "uCI", "Rhat", "Bulk_ESS", "Tail_ESS")
+  
+table_model_w_controls_rf_state <- table_model_w_controls_rf %>%
+  select(., starts_with("state")) %>% 
+  tibble::rownames_to_column(., "name")
 
-table_model_w_controls_rf <- table_model_w_controls_rf %>% 
+colnames(table_model_w_controls_rf_state) <- c("name", "Estimate", "Est.Error", "lCI",  "uCI", "Rhat", "Bulk_ESS", "Tail_ESS")
+
+
+table_model_w_controls_rf_Q <- table_model_w_controls_rf_Q %>% 
   reframe(name = name,  
-            B = round(cntry.Estimate,2),
-            SE = round(cntry.Est.Error, 2),
-            CIl_CIh = sprintf("[%.2f; %.2f]", cntry.lCI, cntry.uCI),
-            Rhat = format(round(cntry.Rhat, digits=2), nsmall = 2) ,
-            Bulk_ESS = round(cntry.Bulk_ESS),
-            Tail_ESS = round(cntry.Tail_ESS))
+            B = round(Estimate,2),
+            SE = round(Est.Error, 2),
+            CIl_CIh = sprintf("[%.2f; %.2f]", lCI, uCI),
+            Rhat = format(round(Rhat, digits=2), nsmall = 2) ,
+            Bulk_ESS = round(Bulk_ESS),
+            Tail_ESS = round(Tail_ESS))
+
+table_model_w_controls_rf_state <- table_model_w_controls_rf_state %>% 
+  reframe(name = name,  
+            B = round(Estimate,2),
+            SE = round(Est.Error, 2),
+            CIl_CIh = sprintf("[%.2f; %.2f]", lCI, uCI),
+            Rhat = format(round(Rhat, digits=2), nsmall = 2) ,
+            Bulk_ESS = round(Bulk_ESS),
+            Tail_ESS = round(Tail_ESS))
 ```
 ```{r}
-table_model_rf %>% 
+table_model_w_controls_rf_Q %>% 
+  knitr::kable(.)
+
+table_model_w_controls_rf_state %>% 
   knitr::kable(.)
 ```
