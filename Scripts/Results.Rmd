@@ -1,0 +1,70 @@
+---
+title: "Results"
+date: "2025-02-26"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(here)
+library(brms)
+```
+
+```{r}
+model_w_controls <- readRDS(here("Output", "Models", "model3.rds"))
+table_model_w_controls <- summary(model_w_controls)
+```
+
+#### Fixed effects
+```{r}
+table_model_w_controls_fx <- as.data.frame(table_model_w_controls$fixed)
+table_model_w_controls_fx <- tibble::rownames_to_column(table_model_w_controls_fx, "name")
+
+table_model_w_controls_fx <- table_model_w_controls_fx %>% 
+  mutate(name = case_match(
+    name,
+    "Intercept[1]" ~ "Threshold Attitude extremity: 1-2",
+    "Intercept[2]" ~ "Threshold Attitude extremity: 2-3",
+    "min_maj_scale_1" ~ "Majority-Minority Scale", 
+    "min_maj_scale_sq" ~ "Majority-Minority Scale^2",
+    "fr1" ~ "Framing: Yes",
+    "min_maj_scale_1:fr1" ~ "Majority-Minority Scale*Framing: Yes",
+    "fr1:min_maj_scale_sq" ~ "Majority-Minority Scale^2*Framing: Yes"
+  ))
+
+colnames(table_model_w_controls_fx) <- c("name", "Estimate", "Est.Error", "lCI",  "uCI", "Rhat", "Bulk_ESS", "Tail_ESS")
+
+table_model_w_controls_fx <- table_model_w_controls_fx %>% 
+  reframe(name = name,  
+            B = round(Estimate,2),
+            SE = round(Est.Error, 2),
+            CIl_CIh = sprintf("[%.2f; %.2f]", lCI, uCI),
+            Rhat = format(round(Rhat, digits=2), nsmall = 2) ,
+            Bulk_ESS = round(Bulk_ESS),
+            Tail_ESS = round(Tail_ESS))
+```
+```{r}
+table_model_w_controls_fx %>% 
+  knitr::kable(.)
+```
+#### Random effects
+```{r}
+table_model_w_controls_rf <- as.data.frame(table_model_w_controls$random)
+
+table_model_w_controls_rf <- tibble::rownames_to_column(table_model_w_controls_rf, "name")
+
+colnames(table_model_w_controls_rf) <- c("name", "cntry.Estimate", "cntry.Est.Error", "cntry.lCI",  "cntry.uCI", "cntry.Rhat", "cntry.Bulk_ESS", "cntry.Tail_ESS")
+
+table_model_w_controls_rf <- table_model_w_controls_rf %>% 
+  reframe(name = name,  
+            B = round(cntry.Estimate,2),
+            SE = round(cntry.Est.Error, 2),
+            CIl_CIh = sprintf("[%.2f; %.2f]", cntry.lCI, cntry.uCI),
+            Rhat = format(round(cntry.Rhat, digits=2), nsmall = 2) ,
+            Bulk_ESS = round(cntry.Bulk_ESS),
+            Tail_ESS = round(cntry.Tail_ESS))
+```
+```{r}
+table_model_rf %>% 
+  knitr::kable(.)
+```
