@@ -77,6 +77,7 @@ table_model_w_controls_rf_Q <- table_model_w_controls_rf_Q %>%
             Tail_ESS = round(Tail_ESS))
 
 table_model_w_controls_rf_state <- table_model_w_controls_rf_state %>% 
+  filter(name == "sd(Intercept)") %>% 
   reframe(name = name,  
             B = round(Estimate,2),
             SE = round(Est.Error, 2),
@@ -86,9 +87,11 @@ table_model_w_controls_rf_state <- table_model_w_controls_rf_state %>%
             Tail_ESS = round(Tail_ESS))
 ```
 ```{r}
-table_model_w_controls_rf_Q %>% 
-  knitr::kable(.)
+latex_code_table2 <- xtable(table_model_w_controls_rf_Q)
+latex_code_table2 <- capture.output(print(latex_code_table2, booktabs = TRUE))
+writeLines(latex_code_table2, here("Output", "Tables", "table_for_overleaf_2.tex"))
 
-table_model_w_controls_rf_state %>% 
-  knitr::kable(.)
+latex_code_table3 <- xtable(table_model_w_controls_rf_state)
+latex_code_table3 <- capture.output(print(latex_code_table3, booktabs = TRUE))
+writeLines(latex_code_table3, here("Output", "Tables", "table_for_overleaf_3.tex"))
 ```
