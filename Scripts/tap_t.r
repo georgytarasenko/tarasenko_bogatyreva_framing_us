@@ -7,7 +7,7 @@ library(brms)
 library(here)
 
 # Load data
-tap <- readRDS("2024-110_client.rds")
+tap <- readRDS(here("Data", "2024-110_client.rds"))
 
 # Assign treatment groups
 tap <- tap %>%
@@ -40,7 +40,7 @@ tap <- tap %>%
   )
 
 # Load and process presidential election data
-pres20 <- read.csv('president_county_candidate.csv')
+pres20 <- read.csv(here("Data",'president_county_candidate.csv'))
 
 pres20_agg <- pres20 %>%
   group_by(state, candidate) %>%
@@ -102,6 +102,8 @@ pres20_agg <- pres20_agg %>%
 pres20_agg <- pres20_agg %>% 
   mutate(share_diff_q = as.numeric(findInterval(share_diff, unique(quantile(share_diff, seq(0, 1, 0.26)), #И тут
                                     rightmost.closed = TRUE))-1))
+
+saveRDS(pres20_agg, here("Output","Data","state_presid.rds"))
 
 # Merge with tap and add calculated variables
 tap <- tap %>%

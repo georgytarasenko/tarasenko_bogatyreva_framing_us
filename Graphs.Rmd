@@ -1,0 +1,48 @@
+---
+title: "Graphs"
+author: "Natalia Bogatyreva"
+date: "2025-01-28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(here)
+library(ggplot2)
+library(usmap)
+```
+```{r}
+election <- readRDS(here("Output","Data","state_presid.rds"))
+```
+
+```{r}
+election_df <- election %>%
+mutate(
+    # For Democrats: 0.5 to 1 (positive values)
+    # For Republicans: -1 to -0.5 (negative values)
+    color_value = if_else(dem_won == 1, 
+                         dem_share,        # Democratic wins: use dem_share directly
+                         -rep_share)       # Republican wins: negative of rep_share
+  )
+
+```
+
+```{r}
+plot_usmap(regions = "states", data = election_df, values = "color_value") +
+  scale_fill_gradientn(
+   colors = c("darkred", "red", "lightpink",  # Republican gradient
+               "white",                         # Center (should barely be visible)
+               "lightblue", "blue", "darkblue"), # Democratic gradient
+    values = scales::rescale(c(-1, -0.75, -0.5, 0, 0.5, 0.75, 1)),
+    limits = c(-1, 1),
+    name = "Vote Share"
+  ) +
+  theme(legend.position = "right") +
+  labs(title = "US Election Results",
+       subtitle = "Red = Republican win, Blue = Democratic win\nColor intensity based on vote share")
+```
+
