@@ -95,3 +95,45 @@ latex_code_table3 <- xtable(table_model_w_controls_rf_state)
 latex_code_table3 <- capture.output(print(latex_code_table3, booktabs = TRUE))
 writeLines(latex_code_table3, here("Output", "Tables", "table_for_overleaf_3.tex"))
 ```
+```{r}
+# Extract model coefficients
+intercept1 <- table_model_w_controls_fx[table_model_w_controls_fx$name == "Threshold of attitude extremity: 1-2",]$B  
+intercept2 <- table_model_w_controls_fx[table_model_w_controls_fx$name == "Threshold of attitude extremity: 2-3",]$B
+maj_min_effect <- table_model_w_controls_fx[table_model_w_controls_fx$name == "Majority-Minority Scale",]$B
+framing_effect <- table_model_w_controls_fx[table_model_w_controls_fx$name == "Framing: Yes",]$B
+maj_min_sq_effect <- table_model_w_controls_fx[table_model_w_controls_fx$name == "Majority-Minority Scale^2",]$B
+interaction_lin <- table_model_w_controls_fx[table_model_w_controls_fx$name == "Majority-Minority Scale*Framing: Yes",]$B
+interaction_sq <- table_model_w_controls_fx[table_model_w_controls_fx$name == "Majority-Minority Scale^2*Framing: Yes",]$B
+
+# Function to calculate cumulative probabilities for ordinal probit
+calculate_probs <- function(maj_min_score, framing) {
+  # Calculate linear predictor
+  maj_min_sq <- maj_min_score^2
+  
+  linear_pred <- maj_min_effect * maj_min_score + 
+                 framing * framing_effect +
+                 maj_min_sq * maj_min_sq_effect + 
+                 (framing * maj_min_score * interaction_lin) +
+                 (framing * maj_min_sq * interaction_sq)
+  
+  # Calculate cumulative probabilities
+  p1 <- pnorm(intercept1 - linear_pred)
+  p2 <- pnorm(intercept2 - linear_pred)
+  
+  # Calculate category probabilities
+  prob_cat1 <- p1
+  prob_cat2 <- p2 - p1
+  prob_cat3 <- 1 - p2
+  
+  return(c(prob_cat1, prob_cat2, prob_cat3))
+}
+
+# Calculate for strong minority (e.g., value of 0.9 on 0-1 scale)
+strong_minority_no_framing <- calculate_probs(0.9, 0)
+strong_minority_with_framing <- calculate_probs(0.9, 1)
+
+# Calculate difference in highest extremity category
+diff_extreme <- strong_minority_with_framing[3] - strong_minority_no_framing[3]
+percent_diff <- diff_extreme * 100
+```
+
