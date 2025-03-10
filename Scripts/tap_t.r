@@ -163,6 +163,8 @@ tap <- tap %>%
     min_maj_scale_sq = (min_maj_scale+1)^2
   )
 
+save(tap, file=here("Output","Data","tap.rds"))
+
 ### VISUAL INSPECTION
 ##### WHOLE SAMPLE
 
@@ -193,44 +195,6 @@ ggplot(tap, aes(x = min_maj_scale, y = as.numeric(att_t_ex))) +
   xlab('Majority-Minority Scale') + ylab('Extremity of Attitude Towards Transgender Peopel')+
   labs(colour="Treated")
 
-
-tap_graph <- tap %>%
-  mutate(
-    # Convert attitude to numeric for plotting
-    att_t_numeric = case_when(
-      att_t == "Strongly Oppose" ~ 1,
-      att_t == "Oppose" ~ 2,
-      att_t == "Neutral" ~ 3,
-      att_t == "Support" ~ 4,
-      att_t == "Strongly Support" ~ 5,
-      TRUE ~ NA_real_
-    )
-  ) %>% 
-  filter(rep_dem != "Ind")
-
-# Create the faceted plot
-ggplot(tap_graph, aes(x = min_maj_scale, y = att_t_numeric, color = treatment)) +
-  geom_jitter(alpha = 0.3, size = 1, width = 0.05, height = 0.1) +
-  geom_smooth(method = 'lm', se = TRUE) + 
-  facet_wrap(~rep_dem) +
-  scale_y_continuous(
-    breaks = 1:5,
-    labels = c("Strongly Oppose", "Oppose", "Neutral", "Support", "Strongly Support")
-  ) +
-  scale_color_manual(
-    values = c("Positive" = "blue", "Negative" = "red", "Neutral" = "black"),
-    name = "Framing Condition"
-  ) +
-  labs(
-    x = 'Majority-Minority Scale',
-    y = 'Attitude Towards Transgender People',
-    title = "Attitudes by Political Leaning and Treatment Condition"
-  ) +
-  theme_minimal() +
-  theme(
-    axis.text.y = element_text(size = 8),
-    legend.position = "bottom"
-  )
 # I DO Frequentist stuff here cuz it is faster to check
 
 # random interecept for states
