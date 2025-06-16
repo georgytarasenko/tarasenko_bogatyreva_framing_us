@@ -10,6 +10,7 @@ library(here)
 library(brms)
 library(kableExtra)
 library(xtable)
+library(tidybayes)
 ```
 
 ```{r}
@@ -96,44 +97,57 @@ latex_code_table3 <- capture.output(print(latex_code_table3, booktabs = TRUE))
 writeLines(latex_code_table3, here("Output", "Tables", "table_for_overleaf_3.tex"))
 ```
 ```{r}
-# Extract model coefficients
-intercept1 <- table_model_w_controls_fx[table_model_w_controls_fx$name == "Threshold of attitude extremity: 1-2",]$B  
-intercept2 <- table_model_w_controls_fx[table_model_w_controls_fx$name == "Threshold of attitude extremity: 2-3",]$B
-maj_min_effect <- table_model_w_controls_fx[table_model_w_controls_fx$name == "Majority-Minority Scale",]$B
-framing_effect <- table_model_w_controls_fx[table_model_w_controls_fx$name == "Framing: Yes",]$B
-maj_min_sq_effect <- table_model_w_controls_fx[table_model_w_controls_fx$name == "Majority-Minority Scale^2",]$B
-interaction_lin <- table_model_w_controls_fx[table_model_w_controls_fx$name == "Majority-Minority Scale*Framing: Yes",]$B
-interaction_sq <- table_model_w_controls_fx[table_model_w_controls_fx$name == "Majority-Minority Scale^2*Framing: Yes",]$B
+# 1. Build the design matrix you want predictions for ------------------------
+#   ↳ adjust the ±2 to whatever "strong" means on your min_maj_scale_1
+scenarios <- expand_grid(
+  min_maj_scale_1 = c(1, 1.5, 2),        # strong-minority, middle, strong-majority
+  fr            = c(0, 1)              # 0 = control, 1 = framing
+) %>% 
+   mutate(
+    min_maj_scale_sq = min_maj_scale_1 ^ 2    # (min_maj_scale + 1)^2
+  ) %>%
+  arrange(min_maj_scale_1, fr)         # keeps rows in a tidy order
 
-# Function to calculate cumulative probabilities for ordinal probit
-calculate_probs <- function(maj_min_score, framing) {
-  # Calculate linear predictor
-  maj_min_sq <- maj_min_score^2
-  
-  linear_pred <- maj_min_effect * maj_min_score + 
-                 framing * framing_effect +
-                 maj_min_sq * maj_min_sq_effect + 
-                 (framing * maj_min_score * interaction_lin) +
-                 (framing * maj_min_sq * interaction_sq)
-  
-  # Calculate cumulative probabilities
-  p1 <- pnorm(intercept1 - linear_pred)
-  p2 <- pnorm(intercept2 - linear_pred)
-  
-  # Calculate category probabilities
-  prob_cat1 <- p1
-  prob_cat2 <- p2 - p1
-  prob_cat3 <- 1 - p2
-  
-  return(c(prob_cat1, prob_cat2, prob_cat3))
-}
+# 2. Posterior expected probabilities for every category ---------------------
+#    posterior_epred(): draws × observations × categories
+post_epred <- posterior_epred(
+  model_w_controls,
+  newdata     = scenarios,
+  re_formula  = NA            # population-level predictions only
+)
 
-# Calculate for strong minority (e.g., value of 0.9 on 0-1 scale)
-strong_minority_no_framing <- calculate_probs(0.9, 0)
-strong_minority_with_framing <- calculate_probs(0.9, 1)
+# choose which category is your "extreme" one -------------------------------
+# here I assume the *highest* category is extreme; change if needed
+ext_cat <- dim(post_epred)[3]           # last category
+ext_prob <- post_epred[ , , ext_cat ]   # draws × observations
 
-# Calculate difference in highest extremity category
-diff_extreme <- strong_minority_with_framing[3] - strong_minority_no_framing[3]
-percent_diff <- diff_extreme * 100
+# summarise over posterior draws --------------------------------------------
+scenarios$prob_extreme <- colMeans(ext_prob)    # posterior mean
+scenarios$sd_extreme   <- apply(ext_prob, 2, sd)
+
+# 3. %-change: framing vs control inside each minority-majority group --------
+pct_change <- scenarios %>%                     # <— the tibble that already has
+  select(min_maj_scale_1, fr, prob_extreme) %>%#     min_maj_scale_*, fr1, prob_extreme
+  pivot_wider(
+    names_from  = fr,
+    values_from = prob_extreme,
+    names_prefix = "frame_"
+  ) %>% 
+  mutate(
+    pct_change = (frame_1 - frame_0) / frame_0 * 100
+  )
+
+pct_change
+
+# (Optional) round and merge into your effect table -------------------------
+pct_change_fmt <- pct_change %>% 
+  transmute(
+    name       = case_when(
+      min_maj_scale_1 == 1 ~ "Strong majority : %Δ extreme (frame vs ctrl)",
+      min_maj_scale_1 == 1.5 ~ "Middle: %Δ extreme (frame vs ctrl)",
+      min_maj_scale_1 == 2  ~ "Strong minority: %Δ extreme (frame vs ctrl)"
+    ),
+    B          = round(pct_change, 1)
+  )
 ```
 
